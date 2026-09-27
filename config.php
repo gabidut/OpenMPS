@@ -1,7 +1,7 @@
 <?php
 
 define('ADMIN_USER', 'admin');
-define('ADMIN_PASS', 'admin');
+define('ADMIN_PASS', '$2y$12$RjWTk7MIyRmiJanmUl56vODEFHyz1RSj1C2L5H3V55SuvSfJhj/Fy');
 
 define('ALLOWED_ACCESS_KEYS', [
     'legacy'

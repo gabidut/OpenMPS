@@ -184,10 +184,18 @@ if (file_exists($rootDir . '/config.php')) {
     }
 }
 
+$isExistingPassHashed = !empty(password_get_info($currentAdminPass)['algo']);
+
 if ($useDefaults) {
     echo CliStyle::dim("Running in non-interactive mode (--defaults). Applying default configuration...") . "\n";
     $adminUser       = $currentAdminUser;
-    $adminPass       = $currentAdminPass;
+    if ($isExistingPassHashed) {
+        $adminPassHash    = $currentAdminPass;
+        $adminPassDisplay = '(existing hash kept)';
+    } else {
+        $adminPassHash    = password_hash($currentAdminPass, PASSWORD_DEFAULT);
+        $adminPassDisplay = $currentAdminPass;
+    }
     $serverPort      = $currentPort;
     $serverPublicUrl = $currentUrl;
     $accessKey       = 'legacy';
@@ -195,7 +203,20 @@ if ($useDefaults) {
 } else {
     echo "\n" . CliStyle::bold("1. Dashboard Web Authentication") . "\n";
     $adminUser = prompt("Admin dashboard username", $currentAdminUser);
-    $adminPass = prompt("Admin dashboard password", $currentAdminPass);
+    if ($isExistingPassHashed) {
+        $passInput = prompt("Admin dashboard password (leave empty to keep current)", "");
+        if ($passInput === '') {
+            $adminPassHash    = $currentAdminPass;
+            $adminPassDisplay = '(kept existing)';
+        } else {
+            $adminPassHash    = password_hash($passInput, PASSWORD_DEFAULT);
+            $adminPassDisplay = $passInput;
+        }
+    } else {
+        $adminPass = prompt("Admin dashboard password", $currentAdminPass);
+        $adminPassHash    = password_hash($adminPass, PASSWORD_DEFAULT);
+        $adminPassDisplay = $adminPass;
+    }
 
     echo "\n" . CliStyle::bold("2. Network & Public URL") . "\n";
     $serverPort = (int)prompt("Local development HTTP port", (string)$currentPort);
@@ -308,6 +329,7 @@ $configContent = <<<PHP
 <?php
 
 define('ADMIN_USER', '%ADMIN_USER%');
+// Hashed administrator password
 define('ADMIN_PASS', '%ADMIN_PASS%');
 
 define('ALLOWED_ACCESS_KEYS', [
@@ -412,7 +434,7 @@ PHP;
 
 $replacements = [
     '%ADMIN_USER%'        => addslashes($adminUser),
-    '%ADMIN_PASS%'        => addslashes($adminPass),
+    '%ADMIN_PASS%'        => addslashes($adminPassHash),
     '%ACCESS_KEY%'        => addslashes($accessKey),
     '%ALLOW_ANY_KEY%'     => $allowAnyKeyStr,
     '%SERVER_PUBLIC_URL%' => addslashes($serverPublicUrl),
@@ -473,7 +495,7 @@ echo CliStyle::cyan("===========================================================
 echo CliStyle::bold("Connection Details:") . "\n";
 echo "  • Web Dashboard URL   : " . CliStyle::bold($displayUrl) . "\n";
 echo "  • Admin Username      : " . CliStyle::green($adminUser) . "\n";
-echo "  • Admin Password      : " . CliStyle::green($adminPass) . "\n";
+echo "  • Admin Password      : " . CliStyle::green($adminPassDisplay) . "\n";
 echo "  • MPS Access Key      : " . CliStyle::yellow($accessKey) . " (only legacy authorized)\n";
 echo "  • Repository          : " . CliStyle::cyan("https://github.com/gabidut/OpenMPS") . "\n\n";
 

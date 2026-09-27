@@ -47,7 +47,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'login') {
     $user = trim($_POST['username'] ?? '');
     $pass = trim($_POST['password'] ?? '');
 
-    if ($user === ADMIN_USER && $pass === ADMIN_PASS) {
+    $isHash = !empty(password_get_info(ADMIN_PASS)['algo']);
+    $passValid = $isHash ? password_verify($pass, ADMIN_PASS) : hash_equals((string)ADMIN_PASS, (string)$pass);
+
+    if (hash_equals((string)ADMIN_USER, (string)$user) && $passValid) {
         $_SESSION['mps_authenticated'] = true;
         header('Location: ' . mps_get_base_url());
         exit;
