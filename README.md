@@ -1,4 +1,5 @@
 # OpenMPS
+<img src="logo.png">
 
 OpenMPS is an open-source, lightweight implementation of the DynamX Mod Protection System (MPS) server, in addition of the official [DynamX MPS](https://mps.dynamx.fr/).
 
