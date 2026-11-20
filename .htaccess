@@ -24,3 +24,12 @@ Options -Indexes
     php_value post_max_size 512M
     php_value memory_limit 512M
 </IfModule>
+
+# Administration state is never public; forward Bearer headers under Apache/FastCGI.
+<IfModule mod_rewrite.c>
+    RewriteRule ^var/openmps-api(?:/|$) - [F,L]
+</IfModule>
+<Files "api-tokens.php">
+    Require all denied
+</Files>
+SetEnvIf Authorization "(.+)" HTTP_AUTHORIZATION=$1

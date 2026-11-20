@@ -46,6 +46,8 @@ if ($packVersion === false || empty($packVersion)) {
     $b64Version  = base64_encode($packVersion);
 }
 
+if (!preg_match('/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,127}$/D', $packKey) || !preg_match('/^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,127}$/D', $packVersion)) { http_response_code(400); exit('Invalid pack key or version.'); }
+
 $packDir = MPS_PACKS_DIR . '/' . $packKey . '/' . $packVersion;
 if (!is_dir($packDir)) {
     $found = false;
@@ -70,8 +72,15 @@ if (!is_dir($packDir)) {
     }
 }
 
-$cleanPath = str_replace(['..', "\0", '\\'], ['', '', '/'], $filePath);
-$cleanPath = ltrim($cleanPath, '/');
+// Resolve dot segments inside the pack, never by deleting '..' substrings.
+if (strpos($filePath, "\0") !== false) { http_response_code(400); exit('Invalid resource path.'); }
+$segments=[];
+foreach (explode('/', str_replace('\\','/',$filePath)) as $segment) {
+    if ($segment==='' || $segment==='.') continue;
+    if ($segment==='..') { if (!$segments) { http_response_code(400); exit('Resource path leaves the pack.'); } array_pop($segments); }
+    else $segments[]=$segment;
+}
+$cleanPath=implode('/',$segments);
 
 $isRepoRequest = (
     empty($cleanPath) ||
@@ -104,6 +113,10 @@ if ($isRepoRequest) {
 
 $safeFilePath = preg_replace('#^custom/[^/]+/#i', '', $cleanPath);
 $targetFile = $packDir . '/' . $safeFilePath;
+$resolved=realpath($targetFile);$root=realpath($packDir);
+if ($resolved===false || $root===false || strpos($resolved,$root.DIRECTORY_SEPARATOR)!==0) { http_response_code(404); exit('Resource not found.'); }
+$targetFile=$resolved;
+
 
 if (!file_exists($targetFile) || is_dir($targetFile)) {
     http_response_code(404);

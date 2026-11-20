@@ -1,13 +1,12 @@
 <?php
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/pack_manager.php';
 
 $uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
+if (preg_match('#(?:^|/)(?:var/openmps-api(?:/|$)|api-tokens\.php(?:$|/))#', $uri)) { http_response_code(404); exit; }
+if (preg_match('#/api/v1\.php$#', $uri)) { require __DIR__ . '/api/v1.php'; exit; }
+
 
 if (preg_match('#/get/([^/]+)/([^/]+)/([^/]+)(?:/(.*))?$#', $uri, $matches)) {
     $_GET['mps_version'] = $matches[1];
@@ -32,6 +31,8 @@ $potentialFile = __DIR__ . $uri;
 if (file_exists($potentialFile) && is_file($potentialFile) && !preg_match('#\.(php|htaccess)$#', $potentialFile)) {
     return false;
 }
+
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
 

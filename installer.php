@@ -267,6 +267,9 @@ $requiredFiles = [
     $rootDir . '/index.php',
     $rootDir . '/pack_manager.php',
     $rootDir . '/get.php',
+    $rootDir . '/api/v1.php',
+    $rootDir . '/api/lib.php',
+    $rootDir . '/tools/api_token.php',
     $rootDir . '/1.3.0/home.php',
     $rootDir . '/loader/EncryptedMPSResourceLoader.class'
 ];

@@ -127,11 +127,18 @@ function mps_generate_mps_repositories_json(
     return $json;
 }
 
+// Only configuration files belong in the players' archive; resources are served by MPS.
+function mps_is_client_configuration(string $path): bool {
+    $path=str_replace('\\','/',$path);
+    return strpos(strtolower($path),'assets/')!==0 && preg_match('/\.dynx$/i',$path)===1;
+}
+
 function mps_generate_client_zip(
     string $packDir,
     string $packKey,
     string $packVersion,
-    array $extraFiles = []
+    array $extraFiles = [],
+    ?string $publicBaseUrl = null
 ): ?string {
     if (!class_exists('ZipArchive')) {
         return null;
@@ -174,7 +181,7 @@ function mps_generate_client_zip(
     $included = ['MpsRepositories.json' => true, 'pack_info.dynx' => true];
 
     foreach ($extraFiles as $relName => $fullPath) {
-        if (file_exists($fullPath) && is_file($fullPath)) {
+        if (mps_is_client_configuration($relName) && file_exists($fullPath) && is_file($fullPath)) {
             $zip->addFile($fullPath, $relName);
             $included[$relName] = true;
         }
@@ -221,14 +228,14 @@ function mps_generate_client_zip(
                 continue;
             }
 
-            if (!isset($included[$relPath])) {
+            if (mps_is_client_configuration($relPath) && !isset($included[$relPath])) {
                 $zip->addFile($fullPath, $relPath);
                 $included[$relPath] = true;
             }
         }
     }
 
-    $mainUrl = mps_get_base_url();
+    $mainUrl = $publicBaseUrl ?? mps_get_base_url();
     $readme = "=== DynamX / WesterLife MPS Client Pack ===\r\n"
             . "Pack       : {$packKey}\r\n"
             . "Version    : {$packVersion}\r\n"
@@ -245,12 +252,12 @@ function mps_generate_client_zip(
     return $clientZipPath;
 }
 
-function mps_get_or_build_repo_zip(string $packKey, string $packVersion, string $mpsVersion = '1.3.0', ?string $b64Version = null): ?string {
+function mps_get_or_build_repo_zip(string $packKey, string $packVersion, string $mpsVersion = '1.3.0', ?string $b64Version = null, ?string $directory = null, ?string $publicBaseUrl = null): ?string {
     if (!class_exists('ZipArchive')) {
         return null;
     }
 
-    $packDir = MPS_PACKS_DIR . '/' . $packKey . '/' . $packVersion;
+    $packDir = $directory ?? (MPS_PACKS_DIR . '/' . $packKey . '/' . $packVersion);
     if (!is_dir($packDir)) {
         return null;
     }
@@ -265,7 +272,7 @@ function mps_get_or_build_repo_zip(string $packKey, string $packVersion, string 
     $descPath = mps_generate_desc_file($packDir, $packKey, $scan);
     $plainDesc = file_get_contents($descPath);
 
-    $baseUrl = mps_get_base_url();
+    $baseUrl = $publicBaseUrl ?? mps_get_base_url();
     $repoUrl = rtrim($baseUrl, '/') . '/get/' . $mpsVersion . '/' . $packKey . '/' . $b64Version;
     $descKey = mps_compute_desc_key($repoUrl);
     $encryptedDesc = mps_encrypt_aes_ecb($plainDesc, $descKey);
@@ -606,13 +613,13 @@ function mps_get_all_packs(): array {
 
     $packFolders = scandir(MPS_PACKS_DIR);
     foreach ($packFolders as $packFolder) {
-        if ($packFolder === '.' || $packFolder === '..') continue;
+        if ($packFolder === '.' || $packFolder === '..' || $packFolder[0] === '.') continue;
         $packPath = MPS_PACKS_DIR . '/' . $packFolder;
         if (!is_dir($packPath)) continue;
 
         $versions = scandir($packPath);
         foreach ($versions as $v) {
-            if ($v === '.' || $v === '..') continue;
+            if ($v === '.' || $v === '..' || $v[0] === '.') continue;
             $vPath = $packPath . '/' . $v;
             if (!is_dir($vPath)) continue;
 
